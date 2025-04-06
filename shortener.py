@@ -1,12 +1,18 @@
 from flask import Flask, request, redirect, jsonify, redirect, render_template_string
 import string
 import random
+import redis
 import os
 
 app = Flask(__name__)
 
 # In-memory store for URL mappings
-url_database = {}
+# url_database = {}
+
+# Apply Redis for URL storage
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+r = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
 
 @app.route('/')
 def index():
@@ -146,7 +152,16 @@ def get_all_urls():
     urls = []
     host_url = request.host_url
     
-    for code, long_url in url_database.items():
+    # for code, long_url in url_database.items():
+    #     urls.append({
+    #         "short_url": host_url + code,
+    #         "long_url": long_url
+    #     })
+
+    # Use Redis to get all URLs both short and long form
+    codes = r.smembers("shorturl:index")
+    for code in codes:
+        long_url = r.get(f"shorturl:{code}")
         urls.append({
             "short_url": host_url + code,
             "long_url": long_url
@@ -174,12 +189,19 @@ def shorten_url():
     
     # Generate a new short code
     code = generate_short_code()
-    while code in url_database:
-        code = generate_short_code()
+    # while code in url_database:
+    #     code = generate_short_code()
     
-    # Store the mapping
-    url_database[code] = long_url
-    print(url_database)
+    # # Store the mapping
+    # url_database[code] = long_url
+    # print(url_database)
+
+    while True:
+        code = generate_short_code()
+        success = r.set(f"shorturl:{code}", long_url, nx=True)
+        if success:
+            r.sadd("shorturl:index", code)
+            break
     
     # Return the short URL
     short_url = request.host_url + code
@@ -187,7 +209,8 @@ def shorten_url():
 
 @app.route('/<short_code>')
 def redirect_to_url(short_code):
-    long_url = url_database.get(short_code)
+    # long_url = url_database.get(short_code)
+    long_url = r.get(f"shorturl:{short_code}")
     if long_url:
         return redirect(long_url)
     else:

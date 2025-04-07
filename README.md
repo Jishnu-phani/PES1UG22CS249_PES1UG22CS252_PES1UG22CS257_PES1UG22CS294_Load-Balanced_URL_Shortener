@@ -16,7 +16,13 @@ docker push your-dockerhub-username/shortener-app:latest
 
 ## Kubernetes Deployment Steps
 
-### 1. Create Redis resources
+### 1. Start Minikube
+
+```bash
+minikube start
+```
+
+### 2. Create Redis resources
 
 ```bash
 kubectl apply -f k8s/redis-pvc.yaml
@@ -24,13 +30,13 @@ kubectl apply -f k8s/redis-deployment.yaml
 kubectl apply -f k8s/redis-service.yaml
 ```
 
-### 2. Create ConfigMap for the Flask app
+### 3. Create ConfigMap for the Flask app
 
 ```bash
 kubectl apply -f k8s/configmap.yaml
 ```
 
-### 3. Deploy the Flask URL shortener app
+### 4. Deploy the Flask URL shortener app
 
 ```bash
 kubectl apply -f k8s/shortener-deployment.yaml
